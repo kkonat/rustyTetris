@@ -12,25 +12,25 @@ use sdl2::{
     pixels::Color,
     rect::Rect,
     render::{Canvas, Texture, TextureCreator},
-    video::Window,
-    video::WindowContext,
+    video::{Window, WindowContext},
     EventPump,
 };
 
-pub struct GameWindow {
+pub struct GameWindow<'a> {
     pub canvas: Canvas<Window>,
-    texture_creator: &'a TextureCreator<WindowContext>,
+    pub tc: Option<&'a TextureCreator<WindowContext>>,
     pub event_pump: EventPump,
     pub timer: SystemTime,
     pub width: u32,
     pub height: u32,
 }
 
-impl GameWindow {
-    pub fn new() -> Result<GameWindow> {
-        let sdl_context = sdl2::init().unwrap();
+impl<'a> GameWindow<'a> {
+    pub fn new() -> Result<GameWindow<'a>> {
+        let sdl_context = sdl2::init()?;
         let video_subsystem = sdl_context.video()?;
         init(InitFlag::JPG | InitFlag::PNG)?;
+
         let canvas = video_subsystem
             .window("rust Tetris", WIN_WIDTH, WIN_HEIGHT)
             .position_centered()
@@ -41,48 +41,33 @@ impl GameWindow {
 
         Ok(GameWindow {
             canvas,
-            texture_creator: &canvas.texture_creator(),
             event_pump: sdl_context.event_pump()?,
             timer: SystemTime::now(),
             width: WIN_WIDTH,
             height: WIN_HEIGHT,
+            tc: None,
         })
     }
-
-    fn create_texture_rect<'a>(
-        &mut self,
-
-        col: Color,
-        width: u32,
-        height: u32,
-    ) -> Result<Texture<'a>> {
-        let mut rect_texture = self
-            .texture_creator
-            .create_texture_target(None, width, height)?;
-        self.canvas
-            .with_texture_canvas(&mut rect_texture, |texture| {
-                texture.set_draw_color(col);
-                texture.clear();
-            })?;
-
-        Ok(rect_texture)
-    }
-
-    pub fn draw_background(&mut self) -> Result<()> {
-        macro_rules! rgb_tex {
-            ($r:expr, $g:expr, $b:expr) => {
-                self.create_texture_rect(
-                    &self.texture_creator,
-                    Color::RGB($r, $g, $b),
-                    PIECE_SIZE as u32,
-                    PIECE_SIZE as u32,
-                )
+    pub fn create_tex(&mut self, col: Color) -> Result<Texture<'a>> {
+        let mut tex =
+            self.tc
                 .unwrap()
-            };
-        }
-        let grid_color = self.rgb_tex!(0, 0, 0);
-        let border_color = rgb_tex!(255, 255, 255);
+                .create_texture_target(None, PIECE_SIZE as u32, PIECE_SIZE as u32)?;
+
+        self.canvas.with_texture_canvas(&mut tex, |texture| {
+            texture.set_draw_color(col);
+            texture.clear();
+        })?;
+
+        Ok(tex)
+    }
+    pub fn draw_background(&mut self) -> Result<()> {
+        let grid_color = self.create_tex(Color::RGB(0, 0, 0))?;
+
+        let border_color = self.create_tex(Color::RGB(255, 255, 255))?;
+
         static mut BKG_COLOR_R: u8 = 0;
+
         unsafe {
             self.canvas
                 .set_draw_color(Color::RGB(BKG_COLOR_R, 64, 255 - BKG_COLOR_R));

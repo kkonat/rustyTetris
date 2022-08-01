@@ -1,19 +1,14 @@
 extern crate sdl2;
 
-use game::{Game, PIECE_SIZE};
-
-use sdl2::event::Event;
-
-use sdl2::keyboard::Keycode;
-use sdl2::pixels::Color;
-
-use sdl2::render::{Canvas, Texture, TextureCreator};
-use sdl2::video::{Window, WindowContext};
+use sdl2::{
+    event::Event, keyboard::Keycode, pixels::Color, render::TextureCreator, video::WindowContext,
+};
 
 use std::error::Error;
 use std::time::{Duration, SystemTime};
 
 use crate::gamewindow::GameWindow;
+use game::{Game, PIECE_SIZE};
 
 mod fileio;
 mod game;
@@ -22,55 +17,38 @@ mod pieces;
 
 // helper type for error propagation
 pub type Result<T> = std::result::Result<T, Box<dyn Error>>;
-// hide window mechanics internals tuff in a struct
-
-// do ugly stuff
-
-fn create_texture_rect<'a>(
-    canvas: &mut Canvas<Window>,
-    texture_creator: &'a TextureCreator<WindowContext>,
-    col: Color,
-    width: u32,
-    height: u32,
-) -> Result<Texture<'a>> {
-    let mut rect_texture = texture_creator.create_texture_target(None, width, height)?;
-    canvas.with_texture_canvas(&mut rect_texture, |texture| {
-        texture.set_draw_color(col);
-        texture.clear();
-    })?;
-    Ok(rect_texture)
-}
 
 pub fn main() -> Result<()> {
     let mut game = Game::new();
     let mut gw = GameWindow::new()?;
+    let texture_creator: TextureCreator<WindowContext> = gw.canvas.texture_creator(); // texture creator must be created in
+    gw.tc = Some(&texture_creator);
 
     let grid_x = ((gw.width - PIECE_SIZE as u32 * 10) / 2) as i32;
     let grid_y = ((gw.height - PIECE_SIZE as u32 * 16) / 2) as i32;
-    let texture_creator: TextureCreator<_> = gw.canvas.texture_creator();
 
-    macro_rules! rgb {
-        ($r:expr, $g:expr, $b:expr) => {
-            create_texture_rect(
-                &mut gw.canvas,
-                &texture_creator,
-                Color::RGB($r, $g, $b),
-                PIECE_SIZE as u32,
-                PIECE_SIZE as u32,
-            )
-            .unwrap()
-        };
-    }
+    let palette: [u32; 8] = [
+        //  0xff6961, 0xfb480, 0xf8f38d, 0x42d6a4, 0x08cad1, 0x59adf6, 0x9d94ff, 0xc780e8,
 
-    let color_palette = [
-        rgb!(181, 2, 2),
-        rgb!(207, 173, 25),
-        rgb!(232, 127, 14),
-        rgb!(145, 69, 213),
-        rgb!(90, 159, 242),
-        rgb!(15, 209, 247),
-        rgb!(7, 236, 10),
+        // toned down
+        0xd31e25, 0xd7a32e, 0xd1c02b, 0x369e4b, 0x5db5b7, 0x31407b, 0x8a3f64,
+        0x4f2e39,
+        // vivid
+        //0xff0000, 0xff8000, 0xffff00, 0x00ff00, 0x00ffff, 0x0000ff, 0x8000ff, 0x80ffff,
     ];
+    
+    // convert hex values to Vec of textures
+    let color_palette: Vec<_> = palette
+        .iter()
+        .map(|&val| {
+            gw.create_tex(Color::RGB(
+                (val >> 16) as u8,
+                ((val & 0xff00) >> 8) as u8,
+                (val & 0xff) as u8,
+            ))
+            .unwrap()
+        })
+        .collect();
 
     'main_loop: loop {
         gw.draw_background()?;
