@@ -1,6 +1,7 @@
 use crate::pieces::{Piece, PIECEWIDTH};
 pub const WIN_WIDTH: u32 = 600;
 pub const WIN_HEIGHT: u32 = 800;
+pub const WIN_MARGIN: u32 = 20;
 pub const PIECE_SIZE: u32 = 42;
 
 const MAX_LEVELS: usize = 10;
@@ -32,6 +33,7 @@ impl Game {
             piece: Piece::random_piece(),
         }
     }
+
     fn compute_score(&mut self) {
         let mut y = 0;
         let mut incr_score = 0;
@@ -56,18 +58,17 @@ impl Game {
         }
         self.score += incr_score;
         while self.game_map.len() < GAMEMAP_ROWS {
-            self.increase_line();
+            self.lines_cleared += 1;
+
+            if self.lines_cleared > LEVEL_LINES[self.level as usize - 1] {
+                self.level += 1;
+            }
             self.game_map.insert(0, vec![0; GAMEMAP_COLS]);
         }
     }
-    fn increase_line(&mut self) {
-        self.lines_cleared += 1;
 
-        if self.lines_cleared > LEVEL_LINES[self.level as usize - 1] {
-            self.level += 1;
-        }
-    }
-    pub fn make_permanent(&mut self) -> bool {
+    // fixes piece on the game map, creates new piece, returns false if the new pece does not fit
+    pub fn fix_piece(&mut self) -> bool {
         let mut score_incr = 0;
         let p = &self.piece;
         let mut shift_y = 0;
@@ -86,7 +87,6 @@ impl Game {
 
         self.score += score_incr;
         self.compute_score();
-        println!("score={}", self.score);
         self.piece = Piece::random_piece();
 
         self.test_position(None, None, None)
@@ -99,17 +99,17 @@ impl Game {
         yoffs: Option<usize>,
     ) -> bool {
         let (mut tmp_x, mut tmp_y, mut tmp_rot) = (self.piece.x, self.piece.y, self.piece.rot);
+
         if let Some(..) = xoffs {
             tmp_x = xoffs.unwrap();
         }
-
         if let Some(..) = yoffs {
             tmp_y = yoffs.unwrap();
         }
-
         if let Some(..) = r {
             tmp_rot = r.unwrap();
         }
+
         let p = &self.piece;
         for decal_y in 0..p.shapes[tmp_rot].len() {
             for decal_x in 0..4 {
@@ -144,10 +144,12 @@ impl Game {
         }
     }
 
-    pub fn change_piece_position(&mut self, new_x: isize, new_y: usize) -> bool {
-        if self.test_position(None, Some(new_x), Some(new_y)) {
-            self.piece.x = new_x as isize;
-            self.piece.y = new_y;
+    pub fn change_piece_position(&mut self, dx: isize, dy: usize) -> bool {
+        let nx = self.piece.x + dx;
+        let ny = self.piece.y + dy;
+        if self.test_position(None, Some(nx), Some(ny)) {
+            self.piece.x = nx;
+            self.piece.y = ny;
             true
         } else {
             false
