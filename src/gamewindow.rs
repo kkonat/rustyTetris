@@ -66,44 +66,45 @@ impl<'a> GameWindow<'a> {
 
         let border_color = self.create_tex(Color::RGB(255, 255, 255))?;
 
-        static mut BKG_COLOR_R: u8 = 0;
+        static mut BKG_COLOR_R: i16 = 0;
+        static mut BKG_COLOR_STEP: i16 = 1;
 
         unsafe {
+            if BKG_COLOR_R == 256 || BKG_COLOR_R == -1 {
+                BKG_COLOR_STEP = -BKG_COLOR_STEP;
+                BKG_COLOR_R += BKG_COLOR_STEP;
+            }
+
             self.canvas
-                .set_draw_color(Color::RGB(BKG_COLOR_R, 64, 255 - BKG_COLOR_R));
+                .set_draw_color(Color::RGB(BKG_COLOR_R as u8, 64, 255 - BKG_COLOR_R as u8));
             self.canvas.clear();
-
-            BKG_COLOR_R = (BKG_COLOR_R + 1) % 255;
+            BKG_COLOR_R += BKG_COLOR_STEP;
         }
+        let (x, y, w, h) = (
+            ((self.width - PIECE_SIZE * GAMEMAP_COLS as u32) / 2) as i32,
+            ((self.height - PIECE_SIZE * GAMEMAP_ROWS as u32) / 2) as i32,
+            PIECE_SIZE * GAMEMAP_COLS as u32,
+            PIECE_SIZE * GAMEMAP_ROWS as u32,
+        );
 
-        self.canvas.copy(
+        self.draw_rect(
+            x - WIN_MARGIN as i32,
+            y - WIN_MARGIN as i32,
+            w + WIN_MARGIN * 2,
+            h + WIN_MARGIN * 2,
             &border_color,
-            None,
-            Rect::new(
-                ((self.width - PIECE_SIZE * 10) / 2 - WIN_MARGIN) as i32,
-                ((self.height - PIECE_SIZE * 16) / 2 - WIN_MARGIN) as i32,
-                PIECE_SIZE * GAMEMAP_COLS as u32 + WIN_MARGIN * 2,
-                PIECE_SIZE * GAMEMAP_ROWS as u32 + WIN_MARGIN * 2,
-            ),
         )?;
-        self.canvas.copy(
-            &grid_color,
-            None,
-            Rect::new(
-                ((self.width - PIECE_SIZE * 10) / 2) as i32,
-                ((self.height - PIECE_SIZE * 16) / 2) as i32,
-                PIECE_SIZE * GAMEMAP_COLS as u32,
-                PIECE_SIZE * GAMEMAP_ROWS as u32,
-            ),
-        )?;
+
+        self.draw_rect(x, y, w, h, &grid_color)?;
+
+        Ok(())
+    }
+    pub fn draw_rect(&mut self, x: i32, y: i32, w: u32, h: u32, color: &Texture) -> Result<()> {
+        self.canvas.copy(color, None, Rect::new(x, y, w, h))?;
         Ok(())
     }
     pub fn draw_tile(&mut self, x: i32, y: i32, color: &Texture) -> Result<()> {
-        self.canvas.copy(
-            color,
-            None,
-            Rect::new(x, y, PIECE_SIZE as u32, PIECE_SIZE as u32),
-        )?;
+        self.draw_rect(x, y, PIECE_SIZE as u32, PIECE_SIZE as u32, color)?;
         Ok(())
     }
     pub fn is_time_over(&self, level: u32) -> bool {

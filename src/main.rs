@@ -8,7 +8,7 @@ use std::error::Error;
 use std::time::{Duration, SystemTime};
 
 use crate::gamewindow::GameWindow;
-use game::{Game, PIECE_SIZE};
+use game::{Game, PIECE_SIZE, GAMEMAP_COLS, GAMEMAP_ROWS};
 
 mod fileio;
 mod game;
@@ -24,8 +24,8 @@ pub fn main() -> Result<()> {
     let texture_creator: TextureCreator<WindowContext> = gw.canvas.texture_creator(); // texture creator must be created in
     gw.tc = Some(&texture_creator);
 
-    let grid_x = ((gw.width - PIECE_SIZE as u32 * 10) / 2) as i32;
-    let grid_y = ((gw.height - PIECE_SIZE as u32 * 16) / 2) as i32;
+    let grid_x = ((gw.width - PIECE_SIZE as u32 * GAMEMAP_COLS as u32) / 2) as i32;
+    let grid_y = ((gw.height - PIECE_SIZE as u32 * GAMEMAP_ROWS as u32) / 2) as i32;
 
     let palette: [u32; 8] = [
         //  0xff6961, 0xfb480, 0xf8f38d, 0x42d6a4, 0x08cad1, 0x59adf6, 0x9d94ff, 0xc780e8,
@@ -36,7 +36,7 @@ pub fn main() -> Result<()> {
         // vivid
         //0xff0000, 0xff8000, 0xffff00, 0x00ff00, 0x00ffff, 0x0000ff, 0x8000ff, 0x80ffff,
     ];
-    
+
     // convert hex values to Vec of textures
     let color_palette: Vec<_> = palette
         .iter()

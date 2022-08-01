@@ -1,16 +1,16 @@
 use crate::pieces::{Piece, PIECEWIDTH};
 pub const WIN_WIDTH: u32 = 600;
 pub const WIN_HEIGHT: u32 = 800;
-pub const WIN_MARGIN: u32 = 20;
-pub const PIECE_SIZE: u32 = 42;
+pub const WIN_MARGIN: u32 = 4;
+pub const PIECE_SIZE: u32 = 22;
 
 const MAX_LEVELS: usize = 10;
 
 pub const LEVEL_TIMES: [u32; MAX_LEVELS] = [1000, 850, 700, 600, 500, 400, 300, 250, 220, 190];
 pub const LEVEL_LINES: [u32; MAX_LEVELS] = [20, 40, 60, 80, 100, 120, 140, 160, 180, 200];
 
-pub const GAMEMAP_ROWS: usize = 16;
-pub const GAMEMAP_COLS: usize = 10;
+pub const GAMEMAP_ROWS: usize = 32;
+pub const GAMEMAP_COLS: usize = 20;
 
 pub struct Game {
     pub game_map: Vec<Vec<u8>>,
@@ -133,7 +133,9 @@ impl Game {
         if tmp_rot as usize >= self.piece.shapes.len() {
             tmp_rot = 0;
         }
-        let x_offset = [0, -1, 1, -2, 2, -3];
+        let x_offset = [
+            0, -1, 1, -2, 2, -3, 3, -4, 4, -5, 5, -6, 6, -7, 7, -8, 8, -9, 9,
+        ];
         for x in x_offset.iter() {
             if self.test_position(Some(tmp_rot), None, None) {
                 let p = &mut self.piece;

@@ -1,3 +1,5 @@
+use crate::game::GAMEMAP_COLS;
+
 pub struct Piece {
     pub shapes: Vec<Vec<u8>>,
     pub x: isize,
@@ -13,7 +15,7 @@ impl Default for Piece {
     fn default() -> Piece {
         Piece {
             shapes: vec![vec![0]],
-            x: 4,
+            x: (GAMEMAP_COLS) as isize / 2,
             y: 0,
             code: 0,
             rot: 0,
@@ -50,7 +52,6 @@ impl Piece {
             },
             'O' => Piece {
                 shapes: vec![vec![0b11, 0b11]],
-                x: 5,
                 code: 4,
                 ..Default::default()
             },
