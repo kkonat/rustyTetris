@@ -1,5 +1,6 @@
 extern crate sdl2;
 
+use sdl2::render::Texture;
 use sdl2::{
     event::Event, keyboard::Keycode, pixels::Color, render::TextureCreator, video::WindowContext,
 };
@@ -8,7 +9,7 @@ use std::error::Error;
 use std::time::{Duration, SystemTime};
 
 use crate::gamewindow::GameWindow;
-use game::{Game, PIECE_SIZE, GAMEMAP_COLS, GAMEMAP_ROWS};
+use game::{Game, GAMEMAP_COLS, GAMEMAP_ROWS, PIECE_SIZE};
 
 mod fileio;
 mod game;
@@ -28,6 +29,7 @@ pub fn main() -> Result<()> {
     let grid_y = ((gw.height - PIECE_SIZE as u32 * GAMEMAP_ROWS as u32) / 2) as i32;
 
     let palette: [u32; 8] = [
+        // various color palettes to chose from
         //  0xff6961, 0xfb480, 0xf8f38d, 0x42d6a4, 0x08cad1, 0x59adf6, 0x9d94ff, 0xc780e8,
 
         // toned down
@@ -53,50 +55,29 @@ pub fn main() -> Result<()> {
     'main_loop: loop {
         gw.draw_background()?;
 
-        let (should_quit, can_move) = handle_events(&mut game, &mut gw.timer, &mut gw.event_pump);
+        let (should_quit, can_move) = handle_events(&mut game, &mut gw);
+
         if can_move {
+            // draw current piece
             let piece = &game.piece;
-            for (line_nb, line) in piece.shapes[piece.rot as usize].iter().enumerate() {
-                for i in 0..4 {
-                    if line & (1 << i) == 0 {
-                        continue;
-                    }
-
-                    gw.draw_tile(
-                        grid_x + (piece.x + i as isize) as i32 * PIECE_SIZE as i32,
-                        grid_y + (piece.y + line_nb) as i32 * PIECE_SIZE as i32,
-                        &color_palette[piece.code as usize - 1],
-                    )?;
-                }
-            }
-        }
-        if should_quit {
-            game.print_game_info();
-            break 'main_loop;
+            draw_current_piece(piece, &mut gw, grid_x, grid_y, &color_palette)?;
         }
 
-        if gw.is_time_over(game.level) {
+        if gw.timer_tick(game.level) {
             if !game.change_piece_position(0, 1) && !game.fix_piece() {
+                // game over
                 game.print_game_info();
                 break 'main_loop;
             }
             gw.timer = SystemTime::now();
         }
 
-        for (line_nb, line) in game.game_map.iter().enumerate() {
-            for (case_nb, case) in line.iter().enumerate() {
-                if *case == 0 {
-                    continue;
-                }
+        draw_other_pieces(&game, &mut gw, grid_x, grid_y, &color_palette)?;
 
-                gw.draw_tile(
-                    grid_x + case_nb as i32 * PIECE_SIZE as i32,
-                    grid_y + line_nb as i32 * PIECE_SIZE as i32,
-                    &color_palette[*case as usize - 1],
-                )?;
-            }
+        if should_quit {
+            game.print_game_info();
+            break 'main_loop;
         }
-
         gw.canvas.present();
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
     }
@@ -104,19 +85,56 @@ pub fn main() -> Result<()> {
     Ok(())
 }
 
-fn handle_events(
-    game: &mut Game,
+fn draw_current_piece(
+    piece: &pieces::Piece,
+    gw: &mut GameWindow,
+    grid_x: i32,
+    grid_y: i32,
+    color_palette: &[Texture],
+) -> Result<()> {
+    for (line_nb, line) in piece.shapes[piece.rot as usize].iter().enumerate() {
+        for i in 0..4 {
+            if line & (1 << i) == 0 {
+                continue;
+            }
 
-    timer: &mut SystemTime,
-    event_pump: &mut sdl2::EventPump,
-) -> (bool, bool) {
-    let mut should_fix = false;
+            gw.draw_tile(
+                grid_x + (piece.x + i as isize) as i32 * PIECE_SIZE as i32,
+                grid_y + (piece.y + line_nb) as i32 * PIECE_SIZE as i32,
+                &color_palette[piece.code as usize - 1],
+            )?;
+        }
+    }
+    Ok(())
+}
+
+fn draw_other_pieces(
+    game: &Game,
+    gw: &mut GameWindow,
+    grid_x: i32,
+    grid_y: i32,
+    color_palette: &[Texture],
+) -> Result<()> {
+    for (line_nb, line) in game.game_map.iter().enumerate() {
+        for (case_nb, case) in line.iter().enumerate() {
+            if *case != 0 {
+                gw.draw_tile(
+                    grid_x + case_nb as i32 * PIECE_SIZE as i32,
+                    grid_y + line_nb as i32 * PIECE_SIZE as i32,
+                    &color_palette[*case as usize - 1],
+                )?;
+            }
+        }
+    }
+    Ok(())
+}
+
+fn handle_events(game: &mut Game, gw: &mut GameWindow) -> (bool, bool) {
     let mut can_move = true;
     let mut quit = false;
-
     let (mut dx, mut dy) = (0, 0);
 
-    'running: for event in event_pump.poll_iter() {
+    'running: for event in gw.event_pump.poll_iter() {
         match event {
             Event::Quit { .. }
             | Event::KeyDown {
@@ -159,18 +177,18 @@ fn handle_events(
                 keycode: Some(Keycode::Down),
                 ..
             } => {
-                should_fix = true;
+                // go as low as possible
                 while game.change_piece_position(0, 1) {
                     dy += 1;
                 }
+                gw.timer = SystemTime::now(); // resync timer
+                can_move = game.fix_piece();
+                return (false, can_move);
             }
             _ => {}
         }
     }
-    if should_fix {
-        *timer = SystemTime::now();
-        can_move = game.fix_piece();
-    } else if !game.change_piece_position(dx, dy) && dy != 0 {
+    if !game.change_piece_position(dx, dy) && dy != 0 {
         can_move = false;
     }
 

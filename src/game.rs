@@ -2,15 +2,15 @@ use crate::pieces::{Piece, PIECEWIDTH};
 pub const WIN_WIDTH: u32 = 600;
 pub const WIN_HEIGHT: u32 = 800;
 pub const WIN_MARGIN: u32 = 4;
-pub const PIECE_SIZE: u32 = 22;
+pub const PIECE_SIZE: u32 = 32;
 
 const MAX_LEVELS: usize = 10;
 
 pub const LEVEL_TIMES: [u32; MAX_LEVELS] = [1000, 850, 700, 600, 500, 400, 300, 250, 220, 190];
 pub const LEVEL_LINES: [u32; MAX_LEVELS] = [20, 40, 60, 80, 100, 120, 140, 160, 180, 200];
 
-pub const GAMEMAP_ROWS: usize = 32;
-pub const GAMEMAP_COLS: usize = 20;
+pub const GAMEMAP_ROWS: usize = 20;
+pub const GAMEMAP_COLS: usize = 14;
 
 pub struct Game {
     pub game_map: Vec<Vec<u8>>,
@@ -19,6 +19,7 @@ pub struct Game {
     pub lines_cleared: u32,
     pub piece: Piece,
 }
+
 impl Game {
     pub fn new() -> Game {
         let mut gm = Vec::new();
@@ -34,7 +35,8 @@ impl Game {
         }
     }
 
-    fn compute_score(&mut self) {
+    // checks if there are full lines and collapses them in the map array and computes scores
+    fn collapse(&mut self) {
         let mut y = 0;
         let mut incr_score = 0;
 
@@ -53,6 +55,7 @@ impl Game {
             }
             y += 1;
         }
+        // compute scores
         if self.game_map.is_empty() {
             incr_score += 1000;
         }
@@ -67,7 +70,7 @@ impl Game {
         }
     }
 
-    // fixes piece on the game map, creates new piece, returns false if the new pece does not fit
+    // fixes piece on the game map, creates new piece, returns false if the new piece does not fit
     pub fn fix_piece(&mut self) -> bool {
         let mut score_incr = 0;
         let p = &self.piece;
@@ -86,29 +89,22 @@ impl Game {
         score_incr += self.level;
 
         self.score += score_incr;
-        self.compute_score();
+        self.collapse();
         self.piece = Piece::random_piece();
 
         self.test_position(None, None, None)
     }
 
+    // checks if current or specified position is valid
     pub fn test_position(
         &self,
-        r: Option<usize>,
+        rot: Option<usize>,
         xoffs: Option<isize>,
         yoffs: Option<usize>,
     ) -> bool {
-        let (mut tmp_x, mut tmp_y, mut tmp_rot) = (self.piece.x, self.piece.y, self.piece.rot);
-
-        if let Some(..) = xoffs {
-            tmp_x = xoffs.unwrap();
-        }
-        if let Some(..) = yoffs {
-            tmp_y = yoffs.unwrap();
-        }
-        if let Some(..) = r {
-            tmp_rot = r.unwrap();
-        }
+        let tmp_x = xoffs.unwrap_or(self.piece.x);
+        let tmp_y = yoffs.unwrap_or(self.piece.y);
+        let tmp_rot = rot.unwrap_or(self.piece.rot);
 
         let p = &self.piece;
         for decal_y in 0..p.shapes[tmp_rot].len() {
@@ -128,24 +124,25 @@ impl Game {
         true
     }
 
+    // rotates current piece, if possible
     pub fn rotate_piece(&mut self) {
+        const X_OFFSET: [isize; 7] = [0, -1, 1, -2, 2, -3, 3];
+
         let mut tmp_rot = self.piece.rot + 1;
         if tmp_rot as usize >= self.piece.shapes.len() {
             tmp_rot = 0;
         }
-        let x_offset = [
-            0, -1, 1, -2, 2, -3, 3, -4, 4, -5, 5, -6, 6, -7, 7, -8, 8, -9, 9,
-        ];
-        for x in x_offset.iter() {
+
+        for x in X_OFFSET.iter() {
             if self.test_position(Some(tmp_rot), None, None) {
-                let p = &mut self.piece;
-                p.rot = tmp_rot;
-                p.x += *x;
+                self.piece.rot = tmp_rot;
+                self.piece.x += *x;
                 break;
             }
         }
     }
 
+    // moves current piece and signals if it can move in the given
     pub fn change_piece_position(&mut self, dx: isize, dy: usize) -> bool {
         let nx = self.piece.x + dx;
         let ny = self.piece.y + dy;

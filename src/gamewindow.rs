@@ -39,6 +39,7 @@ impl<'a> GameWindow<'a> {
             .into_canvas()
             .build()?;
 
+
         Ok(GameWindow {
             canvas,
             event_pump: sdl_context.event_pump()?,
@@ -107,7 +108,7 @@ impl<'a> GameWindow<'a> {
         self.draw_rect(x, y, PIECE_SIZE as u32, PIECE_SIZE as u32, color)?;
         Ok(())
     }
-    pub fn is_time_over(&self, level: u32) -> bool {
+    pub fn timer_tick(&self, level: u32) -> bool {
         match self.timer.elapsed() {
             Ok(elapsed) => {
                 let millis = elapsed.as_secs() as u32 * 1000 + elapsed.subsec_millis();
@@ -116,4 +117,5 @@ impl<'a> GameWindow<'a> {
             Err(_) => false,
         }
     }
+    
 }
