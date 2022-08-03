@@ -6,6 +6,7 @@ pub struct Piece {
     pub y: usize,
     pub rot: usize,
     pub code: u8,
+    pub moves: bool,
 }
 const PIECETYPES: &str = "ILJOSZT";
 const NOPIECETYPES: usize = 7;
@@ -19,6 +20,7 @@ impl Default for Piece {
             y: 0,
             code: 0,
             rot: 0,
+            moves: true,
         }
     }
 }

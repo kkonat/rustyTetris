@@ -11,3 +11,5 @@ rand ="0.8.5"
     version = "0.35"
     default-features = false
     features = ["image","mixer"]
+[features]
+default = ["sdl2/ttf"]

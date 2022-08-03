@@ -1,28 +1,48 @@
-use crate::pieces::{Piece, PIECEWIDTH};
+use std::time::SystemTime;
+
+use crate::{
+    game::GameState::Start,
+    pieces::{Piece, PIECEWIDTH},
+};
 pub const WIN_WIDTH: u32 = 600;
 pub const WIN_HEIGHT: u32 = 800;
 pub const WIN_MARGIN: u32 = 4;
 pub const PIECE_SIZE: u32 = 32;
 
-const MAX_LEVELS: usize = 10;
+const MAX_LEVELS: usize = 14;
 
-pub const LEVEL_TIMES: [u32; MAX_LEVELS] = [1000, 850, 700, 600, 500, 400, 300, 250, 220, 190];
-pub const LEVEL_LINES: [u32; MAX_LEVELS] = [20, 40, 60, 80, 100, 120, 140, 160, 180, 200];
+pub const LEVEL_TIMES: [u32; MAX_LEVELS] = [
+    700, 600, 500, 400, 300, 250, 220, 200, 190, 180, 170, 160, 150, 140,
+];
+pub const LEVEL_LINES: [u32; MAX_LEVELS] =
+    [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 120, 140, 150, 160];
 
 pub const GAMEMAP_ROWS: usize = 20;
 pub const GAMEMAP_COLS: usize = 14;
 
+pub enum GameState {
+    Start,
+    Playing,
+    Paused,
+    End,
+}
 pub struct Game {
     pub game_map: Vec<Vec<u8>>,
     pub level: u32,
     pub score: u32,
     pub lines_cleared: u32,
     pub piece: Piece,
+    pub hiscores: [u32; 5],
+    pub lines: [u32; 5],
+    pub current_state: GameState,
+    pub total_time_played: u128,
+    pub time_measure_start: SystemTime,
 }
 
 impl Game {
     pub fn new() -> Game {
         let mut gm = Vec::new();
+
         for _ in 0..GAMEMAP_ROWS {
             gm.push(vec![0; GAMEMAP_COLS]);
         }
@@ -32,6 +52,11 @@ impl Game {
             score: 0,
             lines_cleared: 0,
             piece: Piece::random_piece(),
+            hiscores: [0_u32; 5],
+            lines: [0_u32; 5],
+            current_state: Start,
+            total_time_played: 0,
+            time_measure_start: SystemTime::now(),
         }
     }
 
@@ -63,7 +88,9 @@ impl Game {
         while self.game_map.len() < GAMEMAP_ROWS {
             self.lines_cleared += 1;
 
-            if self.lines_cleared > LEVEL_LINES[self.level as usize - 1] {
+            if self.lines_cleared > LEVEL_LINES[self.level as usize - 1]
+                && self.level < MAX_LEVELS as u32 - 1
+            {
                 self.level += 1;
             }
             self.game_map.insert(0, vec![0; GAMEMAP_COLS]);
@@ -105,7 +132,7 @@ impl Game {
         let tmp_x = xoffs.unwrap_or(self.piece.x);
         let tmp_y = yoffs.unwrap_or(self.piece.y);
         let tmp_rot = rot.unwrap_or(self.piece.rot);
-
+        
         let p = &self.piece;
         for decal_y in 0..p.shapes[tmp_rot].len() {
             for decal_x in 0..4 {
