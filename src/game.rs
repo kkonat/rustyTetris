@@ -132,7 +132,7 @@ impl Game {
         let tmp_x = xoffs.unwrap_or(self.piece.x);
         let tmp_y = yoffs.unwrap_or(self.piece.y);
         let tmp_rot = rot.unwrap_or(self.piece.rot);
-        
+
         let p = &self.piece;
         for decal_y in 0..p.shapes[tmp_rot].len() {
             for decal_x in 0..4 {
@@ -181,7 +181,13 @@ impl Game {
             false
         }
     }
-
+    pub fn update_time(&mut self) {
+        let el = SystemTime::now()
+            .duration_since(self.time_measure_start)
+            .unwrap()
+            .as_millis();
+        self.total_time_played += el;
+    }
     pub fn print_game_info(&mut self) {
         println!("Game over...");
         println!("Score: {}", self.score);

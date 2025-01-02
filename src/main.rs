@@ -71,7 +71,7 @@ pub fn main() -> Result<()> {
         gw.draw_background()?;
         gw.display_game_information(&game, &font, color_palettes[2])?;
         draw_other_pieces(&game, &mut gw, grid_x, grid_y, &texture_palette)?;
-
+        gw.display_state_info(&game.current_state, &font)?;
         (should_quit) = handle_events(&mut game, &mut gw);
         if game.piece.moves {
             draw_current_piece(&game.piece, &mut gw, grid_x, grid_y, &texture_palette)?;
@@ -84,6 +84,7 @@ pub fn main() -> Result<()> {
             if !game.change_piece_position(0, 1) && !game.fix_piece() {
                 // game over
                 game.current_state = GameState::End;
+                game.update_time();
                 // gw.print_game_over();
             }
             gw.step_timer = SystemTime::now();
@@ -101,7 +102,7 @@ pub fn main() -> Result<()> {
     Ok(())
 }
 
-fn handle_events(game: &mut Game, gw: &mut GameWindow) -> (bool) {
+fn handle_events(game: &mut Game, gw: &mut GameWindow) -> bool {
     let mut quit = false;
 
     let (mut dx, mut dy) = (0, 0);
@@ -129,11 +130,7 @@ fn handle_events(game: &mut Game, gw: &mut GameWindow) -> (bool) {
                         keycode: Some(Keycode::P),
                         ..
                     } => {
-                        let el = SystemTime::now()
-                            .duration_since(game.time_measure_start)
-                            .unwrap()
-                            .as_millis();
-                        game.total_time_played += el;
+                        game.update_time();
                         game.current_state = GameState::Paused;
                     }
                     Event::KeyDown {
@@ -179,9 +176,7 @@ fn handle_events(game: &mut Game, gw: &mut GameWindow) -> (bool) {
                     }
                     _ => {}
                 }
-                if !game.change_piece_position(dx, dy)
-                /*&& dy != 0*/
-                {
+                if !game.change_piece_position(dx, dy) && dy != 0 {
                     game.piece.moves = false;
                 }
             }

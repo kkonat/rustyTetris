@@ -2,8 +2,9 @@ use std::time::SystemTime;
 
 use crate::{
     game::{
-        Game, GameState::Playing, GAMEMAP_COLS, GAMEMAP_ROWS, LEVEL_TIMES, PIECE_SIZE, WIN_HEIGHT,
-        WIN_MARGIN, WIN_WIDTH,
+        self, Game,
+        GameState::{self, Playing},
+        GAMEMAP_COLS, GAMEMAP_ROWS, LEVEL_TIMES, PIECE_SIZE, WIN_HEIGHT, WIN_MARGIN, WIN_WIDTH,
     },
     helpers::ColorFromU32,
     Result,
@@ -136,9 +137,9 @@ impl<'a> GameWindow<'a> {
 
         let surface = font.render(text.as_str()).blended(*color)?;
         let tex = self.tc.unwrap().create_texture_from_surface(&surface)?;
-        let r = Rect::new(x as i32, y as i32, w, h);
-        self.canvas.copy(&tex, None, r)?;
-        Ok(r)
+        let rect = Rect::new(x as i32, y as i32, w, h);
+        self.canvas.copy(&tex, None, rect)?;
+        Ok(rect)
     }
 
     pub fn display_game_information(
@@ -175,8 +176,7 @@ impl<'a> GameWindow<'a> {
         let mut el = game.total_time_played;
         if matches!(game.current_state, Playing) {
             el += SystemTime::now()
-                .duration_since(game.time_measure_start)
-                .unwrap()
+                .duration_since(game.time_measure_start)?
                 .as_millis();
         }
 
@@ -187,6 +187,39 @@ impl<'a> GameWindow<'a> {
 
         self.display_text_line(font, col!(3), elapsed_text, 10, y)?;
 
+        Ok(())
+    }
+    pub fn display_state_info(&mut self, state: &GameState, font: &Font) -> Result<()> {
+        match state {
+            game::GameState::End => {
+                self.display_text_line(
+                    font,
+                    &Color::RGB(255, 0, 0),
+                    "GAME OVER".to_string(),
+                    self.width / 2,
+                    self.height / 2,
+                )?;
+            }
+            game::GameState::Start => {
+                self.display_text_line(
+                    font,
+                    &Color::RGB(255, 0, 0),
+                    "PRESS P TO PLAY".to_string(),
+                    self.width / 2,
+                    self.height / 2,
+                )?;
+            }
+            game::GameState::Paused => {
+                self.display_text_line(
+                    font,
+                    &Color::RGB(255, 0, 0),
+                    "PAUSED".to_string(),
+                    self.width / 2,
+                    self.height / 2,
+                )?;
+            }
+            _ => {}
+        }
         Ok(())
     }
 }
